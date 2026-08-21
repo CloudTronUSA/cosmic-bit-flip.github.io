@@ -28,7 +28,7 @@ export const NAV_LINKS: SocialLink[] = [
 
 export const SOCIAL_LINKS: SocialLink[] = [
   {
-    href: 'https://github.com/C0smic-B1tflip',
+    href: 'https://github.com/cosmic-bit-flip/',
     label: 'GitHub',
   },
   {
