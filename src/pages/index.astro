@@ -1,12 +1,10 @@
 ---
-import BlogCard from '@/components/BlogCard.astro'
 import Link from '@/components/Link.astro'
 import PageHead from '@/components/PageHead.astro'
-import { buttonVariants } from '@/components/ui/button'
 import { SITE } from '@/consts'
 import Layout from '@/layouts/Layout.astro'
 import { getRecentPosts } from '@/lib/data-utils'
-import '@/styles/stars.css' 
+import '@/styles/stars.css'
 const blog = await getRecentPosts(SITE.featuredPostCount)
 ---
 
@@ -16,13 +14,42 @@ const blog = await getRecentPosts(SITE.featuredPostCount)
     <div class="rounded-lg">
       <div class="flex flex-col space-y-1.5 p-6">
         <h3 class="text-3xl leading-none font-medium">cosmic bit flip</h3>
-         <p class="text-muted-foreground text-sm">
-        </p>
+        <p class="text-muted-foreground text-sm"></p>
       </div>
     </div>
-    <div class="p-6 pt-0">
-    cosmic bit flip is a high school / university competitive capture-the-flag (CTF) team. 
+    <div class="prose p-6 pt-0">
+      <p>
+        Founded in February 2025 by high-school teams
+        <Link href="https://ctftime.org/team/280900" external
+          >reCAPTCHA the Flag</Link
+        >,
+        <Link href="https://ctftime.org/team/287976/" external>pbchocolate</Link
+        >, and
+        <Link href="https://ctftime.org/team/355006" external>c-bass ctf</Link>,
+        Cosmic Bit Flip is a high-school &amp; undergraduate CTF and
+        problem-solving community.
+      </p>
+      <p>
+        We like solving interesting technical problems. Aside from CTF, we're a
+        group of CyberPatriot National Finalists, builders (frc robotics
+        <Link href="http://frc8033.org" external>8033</Link>,
+        <Link href="https://www.team10221.org/" external>10221</Link>), and
+        sometimes researchers.
+      </p>
+      <p>Check out our socials:</p>
+      <ul>
+        <li>
+          <Link href="https://ctftime.org/team/372043" external>ctftime</Link>
+        </li>
+        <li>
+          <Link href="https://github.com/cosmic-bit-flip/" external>github</Link
+          >
+        </li>
+        <li><Link href="https://x.com/cbf_ctf" external>twitter</Link></li>
+        <!-- do we really want linkedin
+        <li><Link href="https://www.linkedin.com/company/cosmic-bit-flip/" external>linkedin</Link></li>
+        -->
+      </ul>
     </div>
-    
   </section>
 </Layout>
