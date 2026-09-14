@@ -6,7 +6,7 @@ category: ['crypto', 'pwn']
 bio: 'a poisonous flower'
 website: 'https://nightxade.dev'
 github: 'nightxade'
-discord: '484182924762284054'
+# discord: '484182924762284054'
 linkedin: 'https://www.linkedin.com/in/matthew-cai1337/'
 mail: 'nightxade@nightxade.dev'
 ---
