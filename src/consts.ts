@@ -28,6 +28,14 @@ export const NAV_LINKS: SocialLink[] = [
 
 export const SOCIAL_LINKS: SocialLink[] = [
   {
+    href: 'https://ctftime.org/team/372043',
+    label: 'CTFtime',
+  },
+  {
+    href: 'https://x.com/cbf_ctf',
+    label: 'Twitter',
+  },
+  {
     href: 'https://github.com/cosmic-bit-flip/',
     label: 'GitHub',
   },
@@ -44,5 +52,6 @@ export const ICON_MAP: IconMap = {
   Twitter: 'lucide:twitter',
   Email: 'lucide:mail',
   RSS: 'lucide:rss',
+  CTFtime: '/static/ctftime-favicon.png',
   Discord: 'discord'
 }

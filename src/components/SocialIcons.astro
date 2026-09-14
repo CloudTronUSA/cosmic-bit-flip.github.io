@@ -10,6 +10,9 @@ interface Props {
 }
 
 const { links } = Astro.props
+
+const iconFor = (label: string) =>
+  ICON_MAP[label as keyof typeof ICON_MAP] || 'lucide:message-circle-question'
 ---
 
 <ul class="flex flex-wrap gap-2" role="list">
@@ -23,13 +26,11 @@ const { links } = Astro.props
           class={buttonVariants({ variant: 'outline', size: 'icon' })}
           external
         >
-          <Icon
-            name={
-              ICON_MAP[label as keyof typeof ICON_MAP] ||
-              'lucide:message-circle-question'
-            }
-            class="size-4"
-          />
+          {iconFor(label).startsWith('/') ? (
+            <img src={iconFor(label)} alt={label} class="size-4" />
+          ) : (
+            <Icon name={iconFor(label)} class="size-4" />
+          )}
         </Link>
       </li>
     ))

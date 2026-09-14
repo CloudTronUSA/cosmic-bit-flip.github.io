@@ -1,0 +1,245 @@
+---
+title: 'l3akctf 2026 writeups'
+description: 'l3akctf 2026 writeups'
+date: 2026-08-08
+tags: ['ctf', 'writeup', 'crypto']
+image: './l3ak.jpg'
+authors: ['wjaaaaaaat']
+---
+
+We played L3akctf (a no-ai ctf) and got 15th!
+
+## crypto/A Fine Product
+
+author: `kyc` | 5 solves | 405 points
+
+[challenge files](https://github.com/L3AK-TEAM/L3akCTF2026-public/tree/main/crypto/a-fine-product)
+
+### challenge script analysis
+
+Each instance of this challenge generates 99 random linear functions mod `N = 9**99` (lines 7-15). These are checked to ensure they are invertible (`if gcd(a, 9) == 1`).
+```py
+# generate 99 functions of the form f_i(s) = a_i * s + b_i (mod 9^99)
+print('Here are my functions:')
+functions = []
+while len(functions) < 99:
+    a = randbelow(N)
+    b = randbelow(N)
+    if gcd(a, 9) == 1:
+        print(f'f_{len(functions)}(s) = {a} * s + {b}')
+        functions.append((a, b))
+```
+
+One more linear function is stored, initialized as the identity `f(x) = x`, with its coefficients stored in `composed_a` and `composed_b` (line 18). We will refer to it as `composed`.
+```py
+composed_a, composed_b = 1, 0
+```
+
+Next, a menu is presented 999 times with 2 choices.
+The first allows us to select any of the 99 functions `f_i` by its index `i` and compose it with `composed`, essentially setting `composed = f_i(composed)` (lines 27-35).
+```py
+    if choice == 1:
+        print('Enter function indices:')
+        for _ in range(9999):
+            line = input().strip()
+            if line == 'done':
+                break
+            else:
+                a, b = functions[int(line)]
+                composed_a, composed_b = (composed_a * a) % N, (composed_b * a + b) % N
+```
+
+The second generates two primes close in magnitude to `N`, `secret` and `start`. It then sets `end = composed(start)` and checks if `end` is prime. If it is, `secret * start * end` is provided and we must guess `secret` for the flag (lines 37-46).
+```py
+    elif choice == 2:
+        print('Generating factors...')
+        secret = getPrime(N.bit_length() - 1)
+        start = getPrime(N.bit_length() - 1)
+        end = (start * composed_a + composed_b) % N
+        print(f'Product: {secret * start * end if isPrime(end) else "REDACTED"}')
+
+        guess = int(input('What was my secret? >'))
+        if guess == secret:
+            print(open('flag.txt').read())
+```
+
+To summarize, we are give 99 random invertible linear functions mod `N = 9**99` and are allowed to compose a sequence of up to around `999 * 9999 ~= 10000000` of them to create another linear function, `composed`. We are then given up to around `999` tries, depending on how many functions were composed, to guess a random prime `secret` given `secret * start * composed(start)`, where `start` is another random prime.
+
+### guessing `secret` given choice of `composed`
+
+It is clear that we must exploit the linear relationship between `start` and `end`. However, there are several conditions on `composed` to mount a successful attack.
+
+First, most linear functions that `composed` could become would not produce that desired relationship because they all reduce the output mod `N`. So, the `composed` we seek must have very small linear coefficient and fairly small constant coefficient.
+
+Next, `end` must be prime to leak the product that is our only source of info on `secret`, meaning that `composed` must have a non-negligible change of producing prime outputs when given prime inputs.
+
+One of the simplest functions that comes to mind is `f(x) = 2*x + 1`, producing `end = 2*start + 1`. Assuming `end` is prime, which indeed happens frequently enough for our purposes, `pow(anything, 2*start*anything2) - 1` is a multiple of `end` by FLT (for arbitrary `anything, anything2`).
+
+Let `n = product` for brevity. Note that `2*n` is a multiple of `2*start`, so taking `pow(2, 2*n) -1` will also yield a multiple of `end`. Finally, use gcd's efficiency to extract `end = gcd(pow(2, 2*n, n) - 1, n)` (taking the power mod `n` so that the computation is actually possible).
+
+Once `end` has been found, `start = end // 2` and `secret = n // (start*end)` are easy to find in turn.
+
+However, this is only half the problem solved. We still need to get `composed` equal to `f(x) = 2*x + 1` in the first place.
+
+### obtaining desired `composed_a`
+
+First, I noticed that invertible linear functions mod `N = 9**99` form a group, although not an abelian one. I implemented a class to simulate elements of this and similar groups in [`affine.py`](https://github.com/wjaaaaaaat/writeups/blob/main/L3ak/crypto_a-fine-product/affine.py).
+
+After some time, I realized that the linear coefficient of a composition within this group depends only on the linear coefficients of the composed functions (in fact, it is the product of them). In other words, if we ignore the constant coefficient, the group structure resembles that of the cyclic group mod `N`.
+
+Importantly, the problem of finding a sequence of functions (from the 99 given) that compose to a function with a certain linear coefficient is reduced to the problem of finding a sequence of linear coefficients (from the 99 given) that multiply to the desired linear coefficient.
+
+This problem can in turn be reduced to an additive version of itself mod totient(`N`) by taking the discrete log of all relevant values mod `N` (which is efficient thanks to `N` being a prime power). We can use `2` as a base because it is a multiplicative generator mod `N`.
+
+Now, it looks very similar to the subset sum problem, evoking thoughts of lattice reduction. In fact, this problem was made to be solved by lattice reduction. In case the last few sentences were too dense, here is the mathematical procedure.
+
+Let the given functions be $f_i(s) = a_i s + b_i$ for $i \in \{0, \dots, 98\}.$ Next, let $A_i$ be the discrete log of $a_i$ base $2$ mod $N,$ such that $2^{A_i} \equiv a_i \pmod{N}.$ Let $a$ be the desired linear coefficient and let $A$ be its discrete log base $2$ mod $N.$
+
+We seek a sequence of $A_i$ that adds to $A$ mod $\varphi(N)$ so that their corresponding $a_i$ will multiply to $a$ mod $N.$ Another way to put it is that we seek coefficients $k_i$ such that $\sum_i k_iA_i \equiv A \pmod{\varphi(N)}.$
+
+The matrix we will use is $$M = \begin{bmatrix}
+     1 &      0 & \cdots & 0      & 0      & A_0    \\
+     0 &      1 & \cdots & 0      & 0      & A_1    \\
+\vdots & \vdots & \ddots & \vdots & \vdots & \vdots \\
+     0 &      0 & \cdots & 1      & 0      & A_{98} \\
+     0 &      0 & \cdots & 0      & 1      & A      \\
+     0 &      0 & \cdots & 0      & 0      & N      \\
+\end{bmatrix}.$$
+
+Letting $M_i$ denote row $i$ of $M$ (0-indexed), note that $$k_0M_0 + \cdots + k_{98}M_{98} + (-1)M_{99} + KM_{100} = [k_0, \dots, k_{98}, -1, 0]$$ for a sequence of satisfactory coefficients $k_i$ and appropriate $K.$ So, it remains to apply a lattice reduction to $M$ and search for rows ending with $[-1, 0]$ or $[1, 0]$ in the result.
+
+The only problem now is that some $k_i$ may be negative, which doesn't work for our problem context. This can be remedied by subtracting some multiple of $\kappa\sum A_i$ from $A,$ then correcting this offset after the reduction by adding $\kappa$ to each obtained $k_i.$ In [my script](https://github.com/wjaaaaaaat/writeups/blob/main/L3ak/crypto_a-fine-product/solve.py), $\kappa = 20$ and is referred to as the variable `offset`, but this choice is arbitrary and could be made lower if seeking to minimize number of functions composed.
+
+As a final note for this section, using the parameters I used, it empirically took around 2000 functions to compose a desired linear coefficient (which makes sense as the raw coefficients should average $0$ so the offset coefficients should average $\kappa,$ and $2000 \approx 99\kappa$).
+
+### obtaining desired `composed_b`
+
+We can obtain our desired linear coefficient of 2; now we just need to correct the constant term. This can be done by similar tech to find a function with linear coefficient 1, then rearranging the functions that are composed to find many other functions with linear coefficient 1 (here, we use the fact that the group is non-abelian to our advantage). I'm not sure if I explained that well, so I'll attach the code that does this part here (lines 80-98 with some lines cut out).
+```py
+    print('Attempting to find one')
+    one = search_mul(factors, 1)
+    if not one[0]: return False, ["one = search_mul(factors, 1) failed"] + one[1]
+    one = one[1]
+    if not all(exponent >= 3 for exponent in one[:3]): return False, "one failed to have min >= 3"
+    
+    starts = set(*[itertools.permutations([0, 0, 0, 1, 1, 1, 2, 2, 2])])
+    
+    end = []
+    for i in range(3):
+        end += [i for _ in range(one[i]-3)]
+    for i in range(3,dims):
+        end += [i for _ in range(one[i])]
+
+    oneperms = [list(start) + end for start in starts]
+```
+The variable `one` stores the number of times to include each of the 99 given functions in a function composition in order to obtain a linear coefficient of 1. Then, `itertools.permutations` is used to shuffle a few of those functions around to create 1680 different sequences of function indices that all compose to different functions with linear coefficients 1. However, only a fraction of these are required. In [my script](https://github.com/wjaaaaaaat/writeups/blob/main/L3ak/crypto_a-fine-product/solve.py), I used 99 of them, somewhat on a whim, but it worked.
+
+Let these 99 functions be $x + \beta_i$ for $i \in \{0, \dots, 99\}.$ Note that we can apply the same lattice reduction method we used on the $A_i$ to find a sequence of these functions that compose to one with a desired constant term. Then, we can use this capability to correct the constant term of the function with linear coefficient 2.
+
+Since we are nesting sequences of around 2000, this takes around 4000000 functions. Luckily, this is well within the around 10000000 functions allowed in our composition by the challenge. (If it weren't, I would have attempted to further optimize parameters such as $\kappa$ aka `offset`.)
+
+Finally, once we have `composed_a, composed_b = 2, 1`, we spam the server with option 2 until it leaks a product, and use our results from the second section of this writeup.
+
+### final flag
+
+I would put a final flag here but I forgot to save it and now the challenge instance is down. Oops
+
+## crypto/Isaac's Kaleidoscope
+
+author: `Suvoni` | 5 solves | 405 points
+
+[challenge files](https://github.com/L3AK-TEAM/L3akCTF2026-public/tree/main/crypto/Isaacs-Kaleidoscope)
+
+### initial investigation
+
+The very first thing I did was hit "Encrypt" with 0 bytes entered as input. It spat out 4 images.
+
+Then, I tried inputs of all "a"s. The number of images seemed to increase with the number of bytes inputted. With a bit of binary search and a bit of trial and error, I figured out that the number of images increased 1 every 16 added bytes, with it increasing from 4 to 5 at 12 bytes.
+
+As for the images themselves, I recognized them as Newton fractals from the 3Blue1Brown video (with my suspicions confirmed by the challenge title). I noticed that each image appeared to have 8 roots and randomized colors. Given this information, I figured that each image had to encode 16 bytes.
+
+### brooding
+
+I thought for a while about this encoding.
+
+When I inputted 180 "a"s, the first few images were the same, so it was likely that the 16-byte blocks didn't affect each other. Moreover, those images appeared to have all of the eighth roots of unity as roots except for 1. Images for blocks of all "b"s and all "c"s were similar.
+
+I racked my brain for what the encoding process could possibly be.
+
+Are the bytes used to derive the coefficients? The roots?
+
+Those roots of unity excluding one are roots of x^7 + ... + 1, which has repeating coefficients, so it has to be related to the repeated bytes I inputted, right?
+
+But the full polynomial would have 9 coefficients, a poor fit to distribute 16 bytes...
+
+so it had to be the roots!
+
+But how......?
+
+![screenshot showing me thinking and being stuck](https://raw.githubusercontent.com/wjaaaaaaat/writeups/refs/heads/main/L3ak/crypto_isaacs-kaleidoscope/screenshot1.png)
+
+I didn't realize this line of thought was completely irrelevant to solving the challenge until 3 hours later.
+
+### realization
+
+![screenshot showing me having a realization](https://raw.githubusercontent.com/wjaaaaaaat/writeups/refs/heads/main/L3ak/crypto_isaacs-kaleidoscope/screenshot2.png)
+
+One of my very first observations was the only one I needed the entire time.
+> When I inputted 180 "a"s, the first few images were the same, so it was likely that the 16-byte blocks didn't affect each other.
+
+I didn't need to figure out the encoding. All that mattered was that the blocks were independent; then, I could treat it like an AES-ECB oracle.
+
+Based on the amounts of images generated, I realized 52 bytes were being added to the input before it was padded to a multiple-of-16 byte length and sent in for encoding. I also realized those mysterious 52 bytes were being concatenated to the end (rather than the beginning) because when I sent in 180 "a"s, the first few images were identical, not the last few.
+
+I sent in "0123456789aL3AK\{0123456789a" first to test my theory, and sure enough, the first 2 images returned were identical.
+
+I groaned. Even though this meant I had a solve path, I knew it was tedious and straining to complete. I would have to go byte-by-byte, guessing each character.
+
+### watch the sunrise
+
+Luckily, I soon discovered a few tricks. Other than guessing words, I could binary search my way to an approximately correct character because the fractals got more similar the closer in ascii value the character was.
+
+However, there was a much more important trick that probably saved my sanity, and that was split-screening.
+
+Instead of downloading the images and comparing them by xor and other means, which was annoying even with a script, all I had to do was move my split screen border to align with certain features on the image. I was basically using a level on my computer screen, which considerably sped up comparisons towards the later part of the flag.
+
+But it was still boring, and I was up way too late, so I kept making mistakes.
+
+![screenshot showing me executing the solve](https://raw.githubusercontent.com/wjaaaaaaat/writeups/refs/heads/main/L3ak/crypto_isaacs-kaleidoscope/screenshot3.png)
+
+Eventually, after an hour or two of guesswork, submission, comparison, and repetition, I arrived at the flag:
+```
+L3AK{N3wT0N_fR4cT@Ls_Ar4_m4STerP1eC3s_0F_Ma7H_&_ArT}
+```
+
+Newton fractals are masterpieces of math & art. After staring at them through dawn, I'm not sure if I agree, but I was glad to be done.
+
+### stupidity
+
+My flag was wrong.
+
+![screenshot showing my flag being wrong](https://raw.githubusercontent.com/wjaaaaaaat/writeups/refs/heads/main/L3ak/crypto_isaacs-kaleidoscope/screenshot4.png)
+
+I'm sure you, dear reader, have already spotted my mistake. If you haven't, maybe give the last section a careful reread.
+
+At the time, I thought I had just messed up an ascii value by 1 or 2. Surely it was the A's and the @'s! They would represent the same thing in the flag, and their bytes are only 1 apart.
+
+![screenshot showing me tweaking on thoughts of A and @](https://raw.githubusercontent.com/wjaaaaaaat/writeups/refs/heads/main/L3ak/crypto_isaacs-kaleidoscope/screenshot5.png)
+
+Confused, I called for help in #general. And luckily for me, a [hero](https://ctf.milrn.dev/) was online.
+
+![screenshot of milrn, a hero, appearing](https://raw.githubusercontent.com/wjaaaaaaat/writeups/refs/heads/main/L3ak/crypto_isaacs-kaleidoscope/screenshot6.png)
+
+I still thought it had to be the A/@ issue, so I tried submitting all 8 combinations myself on the website.
+
+![screenshot showing me tweaking even harder on thoughts of A and @](https://raw.githubusercontent.com/wjaaaaaaat/writeups/refs/heads/main/L3ak/crypto_isaacs-kaleidoscope/screenshot7.png)
+
+Then, out of nowhere, my savior milrn announced the solve.
+
+![screenshot showing milrn announcing solve](https://raw.githubusercontent.com/wjaaaaaaat/writeups/refs/heads/main/L3ak/crypto_isaacs-kaleidoscope/screenshot8.png)
+
+I was shocked. What could it have been??????(?)
+
+![screenshot showing my stupidity](https://raw.githubusercontent.com/wjaaaaaaat/writeups/refs/heads/main/L3ak/crypto_isaacs-kaleidoscope/screenshot9.png)
+
+goodbye

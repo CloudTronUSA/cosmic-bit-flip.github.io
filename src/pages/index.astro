@@ -1,6 +1,8 @@
 ---
+import BlogCard from '@/components/BlogCard.astro'
 import Link from '@/components/Link.astro'
 import PageHead from '@/components/PageHead.astro'
+import { buttonVariants } from '@/components/ui/button'
 import { SITE } from '@/consts'
 import Layout from '@/layouts/Layout.astro'
 import { getRecentPosts } from '@/lib/data-utils'
@@ -19,24 +21,27 @@ const blog = await getRecentPosts(SITE.featuredPostCount)
     </div>
     <div class="prose p-6 pt-0">
       <p>
-        Founded in February 2025 by high-school teams
+        Founded in February 2025 by high-school teams{' '}
         <Link href="https://ctftime.org/team/280900" external
           >reCAPTCHA the Flag</Link
-        >,
+        >,{' '}
         <Link href="https://ctftime.org/team/355006" external
           >&gt;&lt;((&#39;&gt;</Link
-        >, and
+        >, and{' '}
         <Link href="https://ctftime.org/team/287976/" external>pbchocolate</Link
         >, Cosmic Bit Flip is a high-school &amp; undergraduate CTF and
         problem-solving community.
       </p>
+      <!--
       <p>
         We like solving interesting technical problems. Aside from CTF, we're a
-        group of CyberPatriot National Finalists, builders (frc robotics
-        <Link href="http://frc8033.org" external>8033</Link>,
+        group of CyberPatriot National Finalists, builders (frc robotics{' '}
+        <Link href="http://frc8033.org" external>8033</Link>,{' '}
         <Link href="https://www.team10221.org/" external>10221</Link>), and
         sometimes researchers.
       </p>
+      -->
+      <!--
       <p>Check out our socials:</p>
       <ul>
         <li>
@@ -47,10 +52,36 @@ const blog = await getRecentPosts(SITE.featuredPostCount)
           >
         </li>
         <li><Link href="https://x.com/cbf_ctf" external>twitter</Link></li>
+      -->
         <!-- do we really want linkedin
         <li><Link href="https://www.linkedin.com/company/cosmic-bit-flip/" external>linkedin</Link></li>
         -->
+      <!--
       </ul>
+      -->
+    </div>
+  </section>
+  <section class="flex flex-col gap-y-4 px-6">
+    <h2 class="text-2xl font-medium">Recent posts</h2>
+    <ul class="flex flex-col gap-y-4">
+      {
+        blog.map((post) => (
+          <li>
+            <BlogCard entry={post} />
+          </li>
+        ))
+      }
+    </ul>
+    <div class="flex justify-center">
+      <Link
+        href="/blog"
+        class={buttonVariants({ variant: 'ghost' }) + ' group'}
+      >
+        See all posts <span
+          class="ml-1.5 transition-transform group-hover:translate-x-1"
+          >&rarr;</span
+        >
+      </Link>
     </div>
   </section>
 </Layout>
