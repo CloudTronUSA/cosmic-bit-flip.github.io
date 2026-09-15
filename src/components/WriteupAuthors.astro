@@ -1,0 +1,55 @@
+---
+import Link from '@/components/Link.astro'
+import { parseAuthors } from '@/lib/data-utils'
+import { Image } from 'astro:assets'
+
+interface Props {
+  ids: string[]
+  author?: string
+  solves?: number
+  points?: number
+  files?: string
+}
+
+const { ids, author, solves, points, files } = Astro.props
+const authors = await parseAuthors(ids)
+---
+
+<div
+  class="text-muted-foreground my-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
+>
+  {
+    authors.map((a) => (
+      <div class="flex items-center gap-x-1.5">
+        <Image
+          src={a.avatar}
+          alt={a.name}
+          width={20}
+          height={20}
+          class="rounded-full"
+        />
+        {a.isRegistered ? (
+          <Link href={`/members/${a.id}`} underline class="text-foreground">
+            <span>{a.name}</span>
+          </Link>
+        ) : (
+          <span>{a.name}</span>
+        )}
+      </div>
+    ))
+  }
+  {author && <span aria-hidden="true">|</span>}
+  {author && <span>author: <code>{author}</code></span>}
+  {solves && <span aria-hidden="true">|</span>}
+  {solves && <span>{solves} solves</span>}
+  {points && <span aria-hidden="true">|</span>}
+  {points && <span>{points} points</span>}
+  {files && <span aria-hidden="true">|</span>}
+  {
+    files && (
+      <Link href={files} underline class="text-foreground" external>
+        challenge files
+      </Link>
+    )
+  }
+</div>

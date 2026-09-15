@@ -2,18 +2,345 @@
 title: 'l3akctf 2026 writeups'
 description: 'l3akctf 2026 writeups'
 date: 2026-08-08
-tags: ['ctf', 'writeup', 'crypto']
+tags: ['ctf', 'writeup', 'crypto', 'forensics']
 image: './l3ak.jpg'
-authors: ['wjaaaaaaat']
+authors: ['lolmeow', 'wjaaaaaaat']
 ---
+
+import WriteupAuthors from '@/components/WriteupAuthors.astro'
 
 We played L3akctf (a no-ai ctf) and got 15th!
 
+## forensics/Relizane Is Down!
+
+<WriteupAuthors
+  ids={['lolmeow']}
+  author="Houssem0x1"
+  solves={2}
+  points={478}
+  files="https://github.com/L3AK-TEAM/L3akCTF2026-public/tree/main/forensics/Relizane%20is%20Down!"
+/>
+
+Over the weekend, I played L3akCTF with Cosmic Bit Flip! Although I didn’t have much time, after solving one challenge, I focused on this low-solve challenge.
+
+A lot of people struggled to get past question 1, so I decided to make a writeup targeting this question.
+
+The challenge provides you with a flattened filesystem in the form of a zip file. Extracting the ZIP file provides you with this tree:
+
+```powershell
+PS C:\WINDOWS\system32> tree C:\Users\Cypat\Pictures\L3akCTF_RID_triage_handout\final_triage
+Folder PATH listing for volume Windows
+Volume serial number is 2029-DD5C
+C:\USERS\CYPAT\PICTURES\L3AKCTF_RID_TRIAGE_HANDOUT\FINAL_TRIAGE
+├───C
+│   ├───$Extend
+│   ├───ProgramData
+│   │   └───Microsoft
+│   │       ├───search
+│   │       │   └───data
+│   │       │       └───applications
+│   │       │           └───windows
+│   │       │               └───GatherLogs
+│   │       │                   └───SystemIndex
+│   │       ├───Windows
+│   │       │   └───Start Menu
+│   │       │       └───Programs
+│   │       └───Windows Defender
+│   │           ├───Scans
+│   │           │   └───History
+│   │           │       └───Service
+│   │           │           └───DetectionHistory
+│   │           │               ├───02
+│   │           │               ├───13
+│   │           │               ├───18
+│   │           │               └───19
+│   │           └───Support
+│   ├───Users
+│   │   ├───bello
+│   │   │   ├───AppData
+```
+
+*A Windows filesystem!*
+
+The challenge also provides us with an ncat instance to answer questions about the filesystem:
+
+`ncat --ssl relizane-is-down.instances.ctf.l3ak.team 1337`
+
+Upon connecting, we are asked the first question, which this post will guide you through solving:
+
+```text
+┌──(shell㉿adam)-[~]
+└─$ sudo ncat --ssl relizane-is-down.instances.ctf.l3ak.team 1337
+
+We trust you have received the usual lecture from the local System
+Administrator. It usually boils down to these three things:
+
+    #1) Respect the privacy of others.
+    #2) Think before you type.
+    #3) With great power comes great responsibility.
+
+For security reasons, the password you type will not be visible.
+
+[sudo] password for shell:
+
+-------------------------------------------------- Relizane is Down! --------------------------------------------------
+
+-------------------------------------------------- Author: Houssem0x1 --------------------------------------------------
+
+*** NOTE 1: All timestamps must be in UTC and should be in the following format: YYYY-MM-DD HH:MM:SS
+
+*** NOTE 2: You have to answer all the questions with the required format to get the flag at the end.
+
+
+--- Question 1/20 ---
+What was the last text copied by the user?
+format: ex: life is good!
+>>
+```
+
+Any text copied by a user in the Windows operating system can be saved to the clipboard if clipboard history has been turned on by the user in Settings:
+
+![Windows 11 clipboard history setting](./relizaneisdown/image.png)
+
+*Example of this setting in Windows 11*
+
+All clipboard items are saved in RAM, meaning that once you restart or shut down the computer, the contents of the clipboard disappear. There is one exception to this rule: pinned clipboard items.
+
+Pinned clipboard items work exactly as the name suggests: any copied text remains toward the top of the clipboard and persists across reboots. Because we are given a fileless system, we can reasonably assume that the user has a pinned clipboard item because it would not be possible to see any non-pinned items.
+
+After doing some [research](https://superuser.com/questions/1778831/where-is-the-file-that-contains-pinned-items-in-windows-10-clipboard), we know that pinned clipboard items are saved under `C:\Users\[user]\AppData\Local\Microsoft\Windows\Clipboard\Pinned`
+
+In this folder, we see one pinned clipboard item:
+
+![Pinned clipboard item folder](./relizaneisdown/image-1.png)
+
+### Experimenting with a Solution
+
+Opening the folder reveals several files that are not readable:
+
+```powershell
+PS C:\WINDOWS\system32> cd "C:\Users\Cypat\Pictures\L3akCTF_RID_triage_handout\final_triage\C\Users\bello\AppData\Local\Microsoft\Windows\Clipboard\Pinned\{798B828F-A438-42E0-B37F-D4DAB06AA7AC}\{D4315CDF-3E40-4E08-B8BA-220AF192A67F}"
+PS C:\Users\Cypat\Pictures\L3akCTF_RID_triage_handout\final_triage\C\Users\bello\AppData\Local\Microsoft\Windows\Clipboard\Pinned\{798B828F-A438-42E0-B37F-D4DAB06AA7AC}\{D4315CDF-3E40-4E08-B8BA-220AF192A67F}> cat .\TG9jYWxl
+0‚Á     *†H†÷
+ ‚²0‚®1‚z¢‚v0‚8‚ÐŒßÑŒzÀOÂ—ëK6   Ó;ÉøH©)Vcidf ¼ðÚá½=Të tó##c|ÏhMt]r6çÜsc?€ L‘Ú¶Ð
+%‰»+¾Z?‹Àì¿öEö¶.Û£#Ø0æa‡Ìv¬a¨Yyty€°=‘þµáÑD¾+‘å8qÞ•vdoòð˜èÛ@c*ÄIËŸÂü¸—÷óÕUŸ+Ãö‡À
+ô‰wì”@•Œ•7Ì
+·ÿ2s»U{(d&F{ŠE`¥Eý½( Úx<3W0,    +‚7J0
++‚7000
+
+LOCAL
+user0
+        `†He-(¾’JÀÆÈ‚>"K~Üêµg’h~¬¶;¬ÓCHÄ9|9 ã™÷¤·0+     *†H†÷
+0       `†He.0
+¤Ñí5‡INéq½+3
+¸*|AÜV»œ]œ€|5#Ì
+PS C:\Users\Cypat\Pictures\L3akCTF_RID_triage_handout\final_triage\C\Users\bello\AppData\Local\Microsoft\Windows\Clipboard\Pinned\{798B828F-A438-42E0-B37F-D4DAB06AA7AC}\{D4315CDF-3E40-4E08-B8BA-220AF192A67F}> cat .\VGV4dA==
+0‚Á     *†H†÷
+ ‚²0‚®1‚z¢‚v0‚8‚ÐŒßÑŒzÀOÂ—ëK6   Ó;ÉøH©)Vcidf ¦shõ
+*6í_bðÄ %7ÉâÜ"kËÇ#`ŒÎwþš€
+¹%¯øüS¥Ç‰³¢o␦B$¶«‘¨“À  ë0ßåõ0)ÈÍi␦®3¨Ëã °ç8-íz³(›äìæíG*b.¿¥¨ \—š‹ë¯i(÷‘î@“Õ¨7\Sª¾ˆ¹Ò°½gœ¸×ê„»êÅKÓUKSÙÎáÅK‰Oú
+3_ÿŽ ®RV­æò™0,  +‚7J0
++‚7000
+
+LOCAL
+user0
+        `†He-(  jt$KÂ#H^10²°¾:áÝ03‚a·,†dµºÉµ5œ³õ¸•0+    *†H†÷
+0       `†He.0
+Ù?ŠS|qZ]HOÛaE­™÷ûz¿ª¬îT7èÙ³G¢Ä‹Ýý&òÁÿ…
+PS C:\Users\Cypat\Pictures\L3akCTF_RID_triage_handout\final_triage\C\Users\bello\AppData\Local\Microsoft\Windows\Clipboard\Pinned\{798B828F-A438-42E0-B37F-D4DAB06AA7AC}\{D4315CDF-3E40-4E08-B8BA-220AF192A67F}>
+```
+
+*Yikes!*
+
+Knowing this, I tried to look for a tool that could put this into a readable format.
+
+Digging around the internet, I stumbled across this [article](https://www.passcape.com/index.php?page=1393).
+
+![Passcape clipboard history article](./relizaneisdown/image-2.png)
+
+*Exactly what I need, right?*
+
+This tool required booting into a live recovery media disk, so that is exactly what I did. On my virtual machine, I booted into the live disk provided by Passcape and clicked the “Clipboard History” option under the forensic tools section.
+
+Sure enough, this wasn’t as easy as I thought it would be:
+
+![Passcape clipboard history recovery result](./relizaneisdown/image-3.png)
+
+Knowing this, I pivoted to finding the password for the user account bello.
+
+I tried grabbing the hash and cracking it; obviously, this did not work. I then searched the disk further and stumbled upon a zip file:
+
+![Discovered ZIP file](./relizaneisdown/image-4.png)
+
+Opening the ZIP archive revealed several files:
+
+![Files contained in the ZIP archive](./relizaneisdown/image-5.png)
+
+We are given a dump file for KeePass and a vault. Being provided with a dump file was unusual, so I did some digging on why.
+
+I stumbled upon this search [result](https://www.sysdig.com/blog/keepass-cve-2023-32784-detection):
+
+![KeePass CVE-2023-32784 search result](./relizaneisdown/image-6.png)
+
+Below that result was a GitHub [repo](https://github.com/vdohney/keepass-password-dumper) containing a PoC.
+
+### CVE-2023-32784
+
+TL;DR: An attacker can recover credentials from a KeePass vault using a live memory dump, except for the first character.
+
+[SentinelOne](https://www.sentinelone.com/vulnerability-database/cve-2023-32784/) describes how this vulnerability occurs:
+
+> “The root cause stems from KeePass’s custom-developed text box control used for password entry. This control processes each keystroke in a manner that leaves recoverable string remnants in memory. When a user types their master password character by character, each input operation creates memory artifacts that can be correlated to reconstruct the entered password.”
+
+### Using the CVE
+
+After building the project from the PoC using dotnet, we get the following result when it is run:
+
+```text
+Found: ●a Found: ●a Found: ●a Found: ●a Found: ●a Found: ●a Found: ●a Found: ●a Found: ●a Found: ●a Found: ●●l Found: ●●l Found: ●●l Found: ●●l Found: ●●l Found: ●●l Found: ●●l Found: ●●l Found: ●●l Found: ●●l Found: ●●●g Found: ●●●g Found: ●●●g Found: ●●●g Found: ●●●g Found: ●●●g Found: ●●●g Found: ●●●g Found: ●●●g Found: ●●●g Found: ●●●●e Found: ●●●●e Found: ●●●●e Found: ●●●●e Found: ●●●●e Found: ●●●●e Found: ●●●●e Found: ●●●●e Found: ●●●●e Found: ●●●●e Found: ●●●●●r Found: ●●●●●r Found: ●●●●●r Found: ●●●●●r Found: ●●●●●r Found: ●●●●●r Found: ●●●●●r Found: ●●●●●r Found: ●●●●●r Found: ●●●●●r Found: ●●●●●●i Found: ●●●●●●i Found: ●●●●●●i Found: ●●●●●●i Found: ●●●●●●i Found: ●●●●●●i Found: ●●●●●●i Found: ●●●●●●i Found: ●●●●●●i Found: ●●●●●●i Found: ●●●●●●●a Found: ●●●●●●●a Found: ●●●●●●●a Found: ●●●●●●●a Found: ●●●●●●●a Found: ●●●●●●●a Found: ●●●●●●●a Found: ●●●●●●●a Found: ●●●●●●●a Found: ●●●●●●●a Found: ●●●●●●●●4 Found: ●●●●●●●●4 Found: ●●●●●●●●4 Found: ●●●●●●●●4 Found: ●●●●●●●●4 Found: ●●●●●●●●4 Found: ●●●●●●●●4 Found: ●●●●●●●●4 Found: ●●●●●●●●4 Found: ●●●●●●●●4 Found: ●●●●●●●●●e Found: ●●●●●●●●●e Found: ●●●●●●●●●e Found: ●●●●●●●●●e Found: ●●●●●●●●●e Found: ●●●●●●●●●e Found: ●●●●●●●●●e Found: ●●●●●●●●●e Found: ●●●●●●●●●e Found: ●●●●●●●●●e Found: ●●●●●●●●●●v Found: ●●●●●●●●●●v Found: ●●●●●●●●●●v Found: ●●●●●●●●●●v Found: ●●●●●●●●●●v Found: ●●●●●●●●●●v Found: ●●●●●●●●●●v Found: ●●●●●●●●●●v Found: ●●●●●●●●●●v Found: ●●●●●●●●●●v Found: ●●●●●●●●●●●e Found: ●●●●●●●●●●●e Found: ●●●●●●●●●●●e Found: ●●●●●●●●●●●e Found: ●●●●●●●●●●●e Found: ●●●●●●●●●●●e Found: ●●●●●●●●●●●e Found: ●●●●●●●●●●●e Found: ●●●●●●●●●●●e Found: ●●●●●●●●●●●e Found: ●●●●●●●●●●●●r Found: ●●●●●●●●●●●●r Found: ●●●●●●●●●●●●r Found: ●●●●●●●●●●●●r Found: ●●●●●●●●●●●●r Found: ●●●●●●●●●●●●r Found: ●●●●●●●●●●●●r Found: ●●●●●●●●●●●●r Found: ●●●●●●●●●●●●r Found: ●●●●●●●●●●●●r Found: ●●●●●●●●●●●●●2 Found: ●●●●●●●●●●●●●2 Found: ●●●●●●●●●●●●●2 Found: ●●●●●●●●●●●●●2 Found: ●●●●●●●●●●●●●2 Found: ●●●●●●●●●●●●●2 Found: ●●●●●●●●●●●●●2 Found: ●●●●●●●●●●●●●2 Found: ●●●●●●●●●●●●●2 Found: ●●●●●●●●●●●●●2 Found: ●●●●●●●●●●●●●●1 Found: ●●●●●●●●●●●●●●1 Found: ●●●●●●●●●●●●●●1 Found: ●●●●●●●●●●●●●●1 Found: ●●●●●●●●●●●●●●1 Found: ●●●●●●●●●●●●●●1 Found: ●●●●●●●●●●●●●●1 Found: ●●●●●●●●●●●●●●1 Found: ●●●●●●●●●●●●●●1 Found: ●●●●●●●●●●●●●●1 Found: ●●●●●●●●●●●●●●●3 Found: ●●●●●●●●●●●●●●●3 Found: ●●●●●●●●●●●●●●●3 Found: ●●●●●●●●●●●●●●●3 Found: ●●●●●●●●●●●●●●●3 Found: ●●●●●●●●●●●●●●●3 Found: ●●●●●●●●●●●●●●●3 Found: ●●●●●●●●●●●●●●●3 Found: ●●●●●●●●●●●●●●●3 Found: ●●●●●●●●●●●●●●●3 Found: ●●●●●●●●●●●●●●●●! Found: ●●●●●●●●●●●●●●●●! Found: ●●●●●●●●●●●●●●●●! Found: ●●●●●●●●●●●●●●●●! Found: ●●●●●●●●●●●●●●●●! Found: ●●●●●●●●●●●●●●●●! Found: ●●●●●●●●●●●●●●●●! Found: ●●●●●●●●●●●●●●●●! Found: ●●●●●●●●●●●●●●●●! Found: ●●●●●●●●●●●●●●●●! Found: ●Ï Found: ●§ Found: ●e Found: ●* Found: ●\ Found: ●e Found: ●{ Found: ●W Found: ●W Password candidates (character positions): Unknown characters are displayed as "●" 1.: ● 2.: a, Ï, §, e, *, \, {, W, 3.: l, 4.: g, 5.: e, 6.: r, 7.: i, 8.: a, 9.: 4, 10.: e, 11.: v, 12.: e, 13.: r, 14.: 2, 15.: 1, 16.: 3, 17.: !, Combined: ●{a, Ï, §, e, *, \, {, W}lgeria4ever213!
+```
+
+Obviously, the correct candidate is `a` for Algeria; however, we are missing a letter.
+
+Using the KeePass CLI and brute-forcing the first character, we get `#`. The KeePass vault password is: `#algeria4ever213!`
+
+Unlocking the vault, we find the Windows logon password for bello, which is `@algeria@relizane48!`
+
+### DPAPI-NG
+
+I went back to my original tool and tried to enter the password I recovered; however, the program kept saying that it was wrong, even though I had triple-checked that the password was right. I kept trying and eventually gave up and decided to decrypt it on my own.
+
+While searching, I stumbled upon this [article](https://thinkdfir.com/2018/10/14/clippy-history/) which says:
+
+> “Vico Marizale has done some additional research on this topic! At the time I didn’t look into the syncing feature, but because of this I took a very quick look at the pinned items again. I opened up a pinned item in Nirsoft’s DataProtectionDecryptor and it seems to have “decrypted” the data, but saving it out and removing the DAPI header didn’t seem to result in a bitmap. But apparently the data is encrypted with the newer version of DPAPI; DPAPI-NG. So now to find a tool to decrypt that!”
+
+What is DPAPI-NG exactly? Well, it is another one of Microslop’s security features for encrypting data. It is used for passwords, network keys, credential files, and, of course, the pinned clipboard.
+
+### DPAPI-NG Structure
+
+Let’s convert one of the files found in the clipboard path to hex and analyze it. We will convert the file named `VGV4dA==` because it decodes to `Text`, which is what we need:
+
+```text
+30 82 01 c1 06 09 2a 86 48 86 f7 0d 01 07 03 a0 82 01 b2 30 82 01 ae 02 01 02 31 82 01 7a a2 82 01 76 02 01 04 30 82 01 38 04 82 01 06 01 00 00 00 d0 8c 9d df 01 15 d1 11 8c 7a 00 c0 4f c2 97 eb 01 00 00 00 4b 36 09 d3 3b c9 f8 48 a9 06 29 13 56 63 69 64 00 00 00 00 02 00 00 00 00 00 10 66 00 00 00 01 00 00 20 00 00 00 a6 73 68 f5
+
+0c 2a 36 ed 5f 00 16 62 f0 c4 a0 25 37 c9 e2 dc 22 18 6b cb c7 23 60 8c ce 77 fe 9a 00 00 00 00 0e 80 00 00 00 02 00 00 20 00 00 00 0a b9 25 af f8 fc 53 a5 c7 89 16 b3 14 a2 6f 11 90 1a 42 0f 24 b6 13 ab 91 a8 93 c0 13 a0 a0 eb 30 00 00 00 df e5 f5 30 29 c8 cd 69 02 1a ae 33 a8 cb e3 20 b0 e7 38 2d ed 7a b3 28 9b e4 ec e6 ed 47 2a
+
+62 2e bf a5 a8 20 5c 97 9a 8b eb af 69 28 f7 91 ee 40 00 00 00 93 d5 11 a8 81 37 5c 53 aa be 10 88 b9 d2 17 1d b0 bd 67 9c b8 02 d7 ea 84 bb ea c5 4b 62 08 1f d3 12 55 4b 53 d9 ce e1 c5 11 4b 89 4f 14 fa 02 0d 33 5f ff 8e 8f 1b 39 ae 52 56 ad e6 f2 99 16 30 2c 06 09 2b 06 01 04 01 82 37 4a 01 30 1f 06 0a 2b 06 01 04 01 82 37 4a 01
+
+08 30 11 30 0f 30 0d 0c 05 4c 4f 43 41 4c 0c 04 75 73 65 72 30 0b 06 09 60 86 48 01 65 03 04 01 2d 04 28 09 6a 74 24 4b c2 23 48 5e 31 30 b2 b0 14 be 3a e1 dd 30 33 01 82 61 b7 2c 86 64 b5 ba 05 1c c9 b5 35 9c b3 f5 b8 95 04 30 2b 06 09 2a 86 48 86 f7 0d 01 07 01 30 1e 06 09 60 86 48 01 65 03 04 01 2e 30 11 04 0c d9 3f 10 8a 53 7c
+
+01 71 5a 5d 1b 77 02 01 10 48 06 4f db 61 45 0f ad 99 f7 fb 7a bf aa ac ee 54 37 e8 d9 b3 47 a2 81 c4 8b dd fd 16 26 f2 c1 ff 85 14 07
+```
+
+This [article](https://learn.microsoft.com/en-us/windows/win32/seccng/protected-data-format) tells us that DPAPI-NG uses ASN.1, so using an ASN.1 decoder, we can figure out what each part of the hex means. A useful site for this is [https://lapo.it/asn1js](https://lapo.it/asn1js).
+
+![ASN.1 decoder output](./relizaneisdown/image-7.png)
+
+**`30 82 01 C1`** -> Identifies an ASN.1 SEQUENCE. `82` tells us that the next two bytes give the length, and the next two bytes, `01 C1`, tell us that there will be 449 bytes of data.
+
+**`06 09 2a 86 48 86 f7 0d 01 07 03`** -> Identifies the data with an object identifier of 1.2.840.113549.1.7.3. Googling this tells us that the content type is PKCS CMS EnvelopedData.
+
+**`a0 82 01 b2`** -> The content length is 434 bytes.
+
+**`09 6A 74 24 4B C2 23 48 5E 31 30 B2 B0 14 BE 3A E1 DD 30 33 01 82 61 B7 2C 86 64 B5 BA 05 1C C9 B5 35 9C B3 F5 B8 95 04`** -> An AES-256-wrapped key. More on this later, but this indicates that there is a wrapping algorithm. You can learn more about why it is used [here](https://security.stackexchange.com/questions/270194/what-is-the-point-of-the-aes-key-wrap-algorithm)
+
+**`06 09 60 86 48 01 65 03 04 01 2e`** -> Uses AES-256-GCM.
+
+**`d9 3f 10 8a 53 7c 01 71 5a 5d 1b 77`** -> A parameter containing the IV used for AES encryption.
+
+**`02 01 10`** -> Specifies an authentication tag length of 16 bytes.
+
+The last 36 bytes can reasonably be divided into 20 bytes of ciphertext followed by a 16-byte GCM authentication tag. Lowkey, I do not know whether this is consistent across other files, but this [repo](https://github.com/jborean93/dpapi-ng/blob/eac650f928af3eee494f7312131d540a81c5e8af/src/dpapi_ng/_blob.py#L240) has a Python implementation of `dpapi_ng` and it indicates that it stores the encrypted blob after the structure so we ball yolo 67.
+
+**`48 06 4f db 61 45 0f ad 99 f7 fb 7a bf aa ac ee 54 37 e8 d9`** -> Encrypted data.
+
+**`b3 47 a2 81 c4 8b dd fd 16 26 f2 c1 ff 85 14 07`** -> Authentication tag.
+
+What we are missing is the key, and that is where the Windows logon password comes into play.
+
+### DataProtectionDecryptor
+
+The content encryption key is itself protected using Windows DPAPI. To recover it, we must decrypt the relevant DPAPI-protected value using the Windows password recovered above. We can do this using a tool from NirSoft called [DataProtectionDecryptor](https://www.nirsoft.net/utils/dpapi_data_decryptor.html)
+
+We type in the details requested:
+
+![DataProtectionDecryptor configuration](./relizaneisdown/image-8.png)
+
+The tool asks us for the logon password. However, the account is a Microsoft account, so we must use a separate tool to extract that password. We do this because Windows creates another secret for that Microsoft account to protect the DPAPI master keys.
+
+To obtain this password, NirSoft redirects us to this [tool](https://www.nirsoft.net/utils/microsoft_account_dpapi_password.html) which will extract it for us.
+
+After entering the requested details, we get the password:
+
+![Microsoft account DPAPI password extraction result](./relizaneisdown/image-9.png)
+
+`bfTgEhUz5ahU2WmmKzCjoQ1YfP3dpSAjtQQ119Wushg=`
+
+After entering that password, we specify that we want to decrypt the `VGV4dA==` file.
+
+Our final configuration should look like this:
+
+![Final DataProtectionDecryptor configuration](./relizaneisdown/image-10.png)
+
+Clicking OK successfully decrypts the file.
+
+```text
+0000   61 0E B0 82 DF D7 50 B3 46 32 6C 02 94 9B 3B 0D    a.....P.F2l...;.
+0010   E7 F9 0D 96 6E 25 27 A9 7E 40 FE 03 90 97 35 4C    ....n%'.~@....5L
+```
+
+However, we aren’t done yet. This is just the content encryption key, also called the KEK. We must unwrap it to get the actual content-encryption key.
+
+I used this CyberChef [recipe](https://gchq.github.io/CyberChef/#recipe=AES_Key_Unwrap(%7B'option':'Hex','string':'61%200E%20B0%2082%20DF%20D7%2050%20B3%2046%2032%206C%2002%2094%209B%203B%200DE7%20F9%200D%2096%206E%2025%2027%20A9%207E%2040%20FE%2003%2090%2097%2035%204C'%7D,%7B'option':'Hex','string':'a6a6a6a6a6a6a6a6'%7D,'Hex','Hex')&input=MDkgNkEgNzQgMjQgNEIgQzIgMjMgNDggNUUgMzEgMzAgQjIgQjAgMTQgQkUgM0EgRTEgREQgMzAgMzMgMDEgODIgNjEgQjcgMkMgODYgNjQgQjUgQkEgMDUgMUMgQzkgQjUgMzUgOUMgQjMgRjUgQjggOTUgMDQ) to unwrap it, which gives us the final key: `4cd8e33837a6e12ce8355f42ac70b6e47375552295b8d47e894856935efa5171`
+
+### AES Decryption
+
+After [entering](https://gchq.github.io/CyberChef/#recipe=AES_Decrypt(%7B'option':'Hex','string':'4cd8e33837a6e12ce8355f42ac70b6e47375552295b8d47e894856935efa5171'%7D,%7B'option':'Hex','string':'d9%203f%2010%208a%2053%207c%2001%2071%205a%205d%201b%2077'%7D,16,'GCM','Hex','Raw',%7B'option':'Hex','string':'b3%2047%20a2%2081%20c4%208b%20dd%20fd%2016%2026%20f2%20c1%20ff%2085%2014%2007'%7D,%7B'option':'Hex','string':''%7D,'Off')&input=NDggMDYgNGYgZGIgNjEgNDUgMGYgYWQgOTkgZjcgZmIgN2EgYmYgYWEgYWMgZWUgNTQgMzcgZTggZDk) all the parameters found above, we finally get the pinned clipboard item!
+
+![AES decryption result](./relizaneisdown/image-11.png)
+
+```text
+┌──(shell㉿adam)-[~]
+└─$ sudo ncat --ssl relizane-is-down.instances.ctf.l3ak.team 1337
+
+We trust you have received the usual lecture from the local System
+Administrator. It usually boils down to these three things:
+
+    #1) Respect the privacy of others.
+    #2) Think before you type.
+    #3) With great power comes great responsibility.
+
+For security reasons, the password you type will not be visible.
+
+[sudo] password for shell:
+
+-------------------------------------------------- Relizane is Down! --------------------------------------------------
+
+-------------------------------------------------- Author: Houssem0x1 --------------------------------------------------
+
+*** NOTE 1: All timestamps must be in UTC and should be in the following format: YYYY-MM-DD HH:MM:SS
+
+*** NOTE 2: You have to answer all the questions with the required format to get the flag at the end.
+
+
+--- Question 1/20 ---
+What was the last text copied by the user?
+format: ex: life is good!
+>> game over!
+✔ Correct! Moving to the next question.
+```
+
+It is correct!
+
 ## crypto/A Fine Product
 
-author: `kyc` | 5 solves | 405 points
-
-[challenge files](https://github.com/L3AK-TEAM/L3akCTF2026-public/tree/main/crypto/a-fine-product)
+<WriteupAuthors
+  ids={['wjaaaaaaat']}
+  author="kyc"
+  solves={5}
+  points={405}
+  files="https://github.com/L3AK-TEAM/L3akCTF2026-public/tree/main/crypto/a-fine-product"
+/>
 
 ### challenge script analysis
 
@@ -146,9 +473,13 @@ I would put a final flag here but I forgot to save it and now the challenge inst
 
 ## crypto/Isaac's Kaleidoscope
 
-author: `Suvoni` | 5 solves | 405 points
-
-[challenge files](https://github.com/L3AK-TEAM/L3akCTF2026-public/tree/main/crypto/Isaacs-Kaleidoscope)
+<WriteupAuthors
+  ids={['wjaaaaaaat']}
+  author="Suvoni"
+  solves={5}
+  points={405}
+  files="https://github.com/L3AK-TEAM/L3akCTF2026-public/tree/main/crypto/Isaacs-Kaleidoscope"
+/>
 
 ### initial investigation
 

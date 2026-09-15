@@ -26,12 +26,17 @@
 }
 
 @layer components {
+  .blog-prose,
+  .blog-prose * {
+    @apply tracking-normal;
+  }
+
   .prose {
     @apply text-foreground text-base leading-7;
     @apply [&>link[rel="stylesheet"]+*]:mt-0! [&>link[rel="stylesheet"]+*>*]:mt-0!;
 
     :where(p):not(:where([class~='not-prose'], [class~='not-prose'] *)) {
-      @apply text-foreground/80 my-5;
+      @apply text-foreground my-5;
     }
 
     :where(h1, h2, h3, h4, h5, h6):not(
@@ -79,7 +84,7 @@
     }
 
     :where(li):not(:where([class~='not-prose'], [class~='not-prose'] *)) {
-      @apply text-foreground/80 pl-2 [&>p]:my-0;
+      @apply text-foreground pl-2 [&>p]:my-0;
     }
 
     :where(ul ul, ol ol, ul ol, ol ul):not(
@@ -89,7 +94,7 @@
     }
 
     :where(code):not(:where([class~='not-prose'], [class~='not-prose'] *)) {
-      @apply bg-muted/50 text-foreground relative rounded-sm px-[0.3rem] py-[0.2rem] text-sm font-medium break-words;
+      @apply bg-muted/40 text-foreground/90 relative rounded-sm px-[0.3rem] py-[0.1rem] text-[0.85em] font-normal break-words;
       @apply [&>span[data-line='']>*]:text-(--shiki-light) dark:[&>span[data-line='']>*]:text-(--shiki-dark);
     }
 
@@ -128,7 +133,15 @@
     :where(img, video, figure, .expressive-code):not(
         :where([class~='not-prose'], [class~='not-prose'] *)
       ) {
-      @apply mx-auto my-6;
+      @apply mr-auto ml-0 my-6;
+    }
+
+    :where(.img-center) :where(img, video, figure, .expressive-code) {
+      @apply mx-auto;
+    }
+
+    :where(.img-right) :where(img, video, figure, .expressive-code) {
+      @apply mr-0 ml-auto;
     }
 
     :where(pre):not(:where([class~='not-prose'], [class~='not-prose'] *)) {
