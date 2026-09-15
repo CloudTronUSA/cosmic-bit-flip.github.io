@@ -1,10 +1,12 @@
 ---
-name: 'alphagengar1'
+name: 'nightxade'
 pronouns: 'he/him'
-avatar: '[https://avatars.githubusercontent.com/u/150190618]'
-category: ['misc', 'rev']
-bio: 'THE alpha'
-github: 'alphagengar1'
-linkedin: '[https://www.linkedin.com/in/swaraj-adhikari-968892244']
-mail: 'swaraj.adhikari@ucla.edu'
+avatar: 'https://avatars.githubusercontent.com/u/108432329'
+category: ['crypto', 'pwn']
+bio: 'orz chara'
+website: 'https://nightxade.github.io/ctf-writeups/'
+github: 'nightxade'
+discord: '484182924762284054'
+linkedin: 'https://www.linkedin.com/in/matthew-cai1337/'
+mail: 'matthew.cai.official@gmail.com'
 ---
