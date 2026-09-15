@@ -3,8 +3,8 @@ import type { IconMap, SocialLink, Site } from '@/types'
 export const SITE: Site = {
   title: 'cosmic bit flip',
   description:
-    'astro-erudite is a opinionated, unstyled blogging template—built with Astro, Tailwind, and shadcn/ui.',
-  href: 'https://astro-erudite.vercel.app',
+    'Cosmic Bit Flip is a U.S. high-school & undergraduate CTF and problem-solving community.',
+  href: 'https://cosmicbitflip.org',
   author: 'jktrn',
   locale: 'en-US',
   featuredPostCount: 2,
