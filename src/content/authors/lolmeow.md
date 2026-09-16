@@ -6,5 +6,6 @@ category: ['forensic']
 bio: 'strings'
 website: 'https://sakouk.me'
 github: 'sa1181405'
+linkedin: 'https://www.linkedin.com/in/adam-sakouk/'
 discord: '726835821369360456'
 ---
