@@ -1,7 +1,7 @@
 ---
 name: 'cloudtron'
 pronouns: 'he/him'
-avatar: 'https://i.postimg.cc/DwDd4HVM/IMG-8072(1).webp'
+avatar: 'https://raw.githubusercontent.com/cosmic-bit-flip/cosmic-bit-flip.github.io/refs/heads/main/src/content/authors/cloudtron.webp'
 category: ['web', 'rev', 'misc']
 bio: 'Over the frontier / Into the front.'
 github: 'CloudTronUSA'
